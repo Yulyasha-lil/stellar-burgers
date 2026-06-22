@@ -2,11 +2,15 @@ import { FC, SyntheticEvent, useState } from 'react';
 import { RegisterUI } from '@ui-pages';
 import { useDispatch } from '../../services/store';
 import { registerUser } from '../../services/slices/user-slice';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export const Register: FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from || '/';
+
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,9 +19,16 @@ export const Register: FC = () => {
   const handleSubmit = (e: SyntheticEvent) => {
     e.preventDefault();
     setError('');
-    dispatch(registerUser({ email, name: userName, password }))
+
+    dispatch(
+      registerUser({
+        email,
+        name: userName,
+        password
+      })
+    )
       .unwrap()
-      .then(() => navigate('/', { replace: true }))
+      .then(() => navigate(from, { replace: true }))
       .catch((err) => setError(err.message || 'Ошибка регистрации'));
   };
 

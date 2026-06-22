@@ -1,20 +1,20 @@
 import {
   getFeedsApi,
-  getOrderByNumberApi,
   getOrdersApi,
   orderBurgerApi,
   TFeedsResponse
 } from '../../utils/burger-api';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { TOrder } from '../../utils/types';
+import { clearConstructorItems } from './ingredient-slice';
 
-interface Order {
+interface OrderState {
   orderRequest: boolean;
   orderModalData: TOrder | null;
   orders: TOrder[];
+  feed: TFeedsResponse | null;
   isLoading: boolean;
   error: string | null;
-  feed: TFeedsResponse | null;
 }
 
 export const fetchFeeds = createAsyncThunk(
@@ -29,9 +29,9 @@ export const fetchOrders = createAsyncThunk(
 
 export const createOrder = createAsyncThunk(
   'order/createOrder',
-  async (data: string[]) => {
+  async (data: string[], { dispatch }) => {
     const response = await orderBurgerApi(data);
-    // Преобразуем TNewOrder в TOrder
+
     const order: TOrder = {
       _id: response.order._id,
       status: response.order.status,
@@ -39,24 +39,23 @@ export const createOrder = createAsyncThunk(
       createdAt: response.order.createdAt,
       updatedAt: response.order.updatedAt,
       number: response.order.number,
-      ingredients: data // используем переданные ингредиенты
+      ingredients: data
     };
-    return { order };
+
+    // Конструктор очищается сразу после успешного создания заказа
+    dispatch(clearConstructorItems());
+
+    return order;
   }
 );
 
-export const fetchOrderByNumber = createAsyncThunk(
-  'order/fetchOrderByNumber',
-  async (number: number) => await getOrderByNumberApi(number)
-);
-
-export const initialState: Order = {
+export const initialState: OrderState = {
   orderRequest: false,
   orderModalData: null,
   orders: [],
+  feed: null,
   isLoading: false,
-  error: null,
-  feed: null
+  error: null
 };
 
 const orderSlice = createSlice({
@@ -66,70 +65,59 @@ const orderSlice = createSlice({
     closeOrder: (state) => {
       state.orderRequest = false;
       state.orderModalData = null;
-    },
-    clearOrderModalData: (state) => {
-      state.orderModalData = null;
     }
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchFeeds.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(fetchFeeds.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = (action.error.message as string) ?? null;
-    });
-    builder.addCase(fetchFeeds.fulfilled, (state, action) => {
-      state.isLoading = false;
-      state.orderRequest = false;
-      state.feed = action.payload;
-    });
-    builder.addCase(fetchOrders.pending, (state) => {
-      state.isLoading = true;
-      state.orderRequest = true;
-      state.error = null;
-    });
-    builder.addCase(fetchOrders.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = (action.error.message as string) ?? null;
-    });
-    builder.addCase(fetchOrders.fulfilled, (state, action) => {
-      state.orderRequest = false;
-      state.orders = action.payload;
-      state.error = null;
-    });
-    builder.addCase(createOrder.pending, (state) => {
-      state.isLoading = true;
-      state.orderRequest = true;
-      state.error = null;
-    });
-    builder.addCase(createOrder.rejected, (state, action) => {
-      state.isLoading = false;
-      state.orderRequest = false;
-      state.error = (action.error.message as string) ?? null;
-    });
-    builder.addCase(createOrder.fulfilled, (state, action) => {
-      state.isLoading = false;
-      state.orderRequest = false;
-      state.error = null;
-      state.orderModalData = action.payload.order;
-    });
-    builder.addCase(fetchOrderByNumber.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    });
-    builder.addCase(fetchOrderByNumber.rejected, (state, action) => {
-      state.error = (action.error.message as string) ?? null;
-      state.isLoading = false;
-    });
-    builder.addCase(fetchOrderByNumber.fulfilled, (state, action) => {
-      state.isLoading = false;
-      state.error = null;
-      state.orderModalData = action.payload.orders[0];
-    });
+    builder
+      // Общая лента заказов
+      .addCase(fetchFeeds.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchFeeds.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.feed = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchFeeds.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? null;
+      })
+
+      // История заказов пользователя
+      .addCase(fetchOrders.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrders.fulfilled, (state, action) => {
+        state.isLoading = false; // исправление ревьюера
+        state.orders = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchOrders.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? null;
+      })
+
+      // Создание заказа
+      .addCase(createOrder.pending, (state) => {
+        state.isLoading = true;
+        state.orderRequest = true;
+        state.error = null;
+      })
+      .addCase(createOrder.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.orderRequest = false;
+        state.error = null;
+        state.orderModalData = action.payload;
+      })
+      .addCase(createOrder.rejected, (state, action) => {
+        state.isLoading = false;
+        state.orderRequest = false;
+        state.error = action.error.message ?? null;
+      });
   }
 });
 
-export const { closeOrder, clearOrderModalData } = orderSlice.actions;
+export const { closeOrder } = orderSlice.actions;
 export const orderReducer = orderSlice.reducer;

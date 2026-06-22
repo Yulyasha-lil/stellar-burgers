@@ -1,5 +1,6 @@
 import { getIngredientsApi } from '../../utils/burger-api';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { v4 as uuid } from 'uuid';
 import { TConstructorIngredient, TIngredient } from '../../utils/types';
 
 type TConstructorItems = {
@@ -8,7 +9,7 @@ type TConstructorItems = {
 };
 
 type TBurgerIngredients = {
-  ingredients: Array<TIngredient>;
+  ingredients: TIngredient[];
   constructorItems: TConstructorItems;
   isLoading: boolean;
   isInit: boolean;
@@ -36,100 +37,95 @@ const ingredientSlice = createSlice({
     addIngredient: {
       reducer: (state, action: PayloadAction<TConstructorIngredient>) => {
         if (action.payload.type === 'bun') {
-          state.constructorItems = {
-            ...state.constructorItems,
-            bun: { ...action.payload }
-          };
+          state.constructorItems.bun = action.payload;
         } else {
-          state.constructorItems = {
-            ...state.constructorItems,
-            ingredients: [...state.constructorItems.ingredients, action.payload]
-          };
+          state.constructorItems.ingredients.push(action.payload);
         }
       },
       prepare: (ingredient: TIngredient) => ({
-        payload: { ...ingredient, id: Date.now().toString() }
+        payload: {
+          ...ingredient,
+          id: uuid()
+        }
       })
     },
+
     deleteIngredient: (
       state,
       action: PayloadAction<TConstructorIngredient>
     ) => {
       state.constructorItems.ingredients =
         state.constructorItems.ingredients.filter(
-          (ingredient: TConstructorIngredient) =>
-            ingredient.id !== action.payload.id
+          (ingredient) => ingredient.id !== action.payload.id
         );
     },
+
     moveUpIngredient: (
       state,
       action: PayloadAction<TConstructorIngredient>
     ) => {
       const index = state.constructorItems.ingredients.findIndex(
-        (item: TConstructorIngredient) => item.id === action.payload.id
+        (item) => item.id === action.payload.id
       );
+
       if (index > 0) {
-        const ingredientToMove = state.constructorItems.ingredients[index];
+        const ingredient = state.constructorItems.ingredients[index];
         state.constructorItems.ingredients.splice(index, 1);
-        state.constructorItems.ingredients.splice(
-          index - 1,
-          0,
-          ingredientToMove
-        );
+        state.constructorItems.ingredients.splice(index - 1, 0, ingredient);
       }
     },
+
     moveDownIngredient: (
       state,
       action: PayloadAction<TConstructorIngredient>
     ) => {
       const index = state.constructorItems.ingredients.findIndex(
-        (item: TConstructorIngredient) => item.id === action.payload.id
+        (item) => item.id === action.payload.id
       );
+
       if (
         index !== -1 &&
         index < state.constructorItems.ingredients.length - 1
       ) {
-        const ingredientToMove = state.constructorItems.ingredients[index];
+        const ingredient = state.constructorItems.ingredients[index];
         state.constructorItems.ingredients.splice(index, 1);
-        state.constructorItems.ingredients.splice(
-          index + 1,
-          0,
-          ingredientToMove
-        );
+        state.constructorItems.ingredients.splice(index + 1, 0, ingredient);
       }
     },
+
     clearConstructorItems: (state) => {
-      state.constructorItems.bun = null;
-      state.constructorItems.ingredients = [];
+      state.constructorItems = {
+        bun: null,
+        ingredients: []
+      };
     }
   },
+
   selectors: {
-    getBuns: (state: TBurgerIngredients) =>
-      state.ingredients.filter(
-        (ingredient: TIngredient) => ingredient.type === 'bun'
-      ),
-    getMains: (state: TBurgerIngredients) =>
-      state.ingredients.filter(
-        (ingredient: TIngredient) => ingredient.type === 'main'
-      ),
-    getSauces: (state: TBurgerIngredients) =>
-      state.ingredients.filter(
-        (ingredient: TIngredient) => ingredient.type === 'sauce'
-      )
+    getBuns: (state) =>
+      state.ingredients.filter((ingredient) => ingredient.type === 'bun'),
+
+    getMains: (state) =>
+      state.ingredients.filter((ingredient) => ingredient.type === 'main'),
+
+    getSauces: (state) =>
+      state.ingredients.filter((ingredient) => ingredient.type === 'sauce')
   },
+
   extraReducers: (builder) => {
-    builder.addCase(fetchIngredients.pending, (state) => {
-      state.isLoading = true;
-    });
-    builder.addCase(fetchIngredients.rejected, (state) => {
-      state.isInit = true;
-      state.isLoading = false;
-    });
-    builder.addCase(fetchIngredients.fulfilled, (state, { payload }) => {
-      state.isInit = true;
-      state.isLoading = false;
-      state.ingredients = payload;
-    });
+    builder
+      .addCase(fetchIngredients.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchIngredients.fulfilled, (state, { payload }) => {
+        state.isLoading = false;
+        state.isInit = true;
+        state.ingredients = payload;
+      })
+      .addCase(fetchIngredients.rejected, (state) => {
+        state.isLoading = false;
+        state.isInit = true;
+      });
   }
 });
 

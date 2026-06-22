@@ -9,42 +9,52 @@ import { useNavigate } from 'react-router-dom';
 export const BurgerConstructor: FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   const user = useSelector((state) => state.user.user);
+
   const constructorItems = useSelector(
     (state) => state.ingredients.constructorItems
   );
 
   const orderRequest = useSelector((state) => state.orders.orderRequest);
+
   const orderModalData = useSelector((state) => state.orders.orderModalData);
 
   const onOrderClick = () => {
     if (!constructorItems.bun || orderRequest) return;
+
     if (!user) {
-      return navigate('/login');
+      navigate('/login');
+      return;
     }
 
-    const newOrder = [
+    const orderIngredients = [
       constructorItems.bun._id,
-      ...constructorItems.ingredients.map((ingredient) => ingredient._id),
+      ...constructorItems.ingredients.map((i) => i._id),
       constructorItems.bun._id
     ];
-    dispatch(createOrder(newOrder));
+
+    dispatch(createOrder(orderIngredients))
+      .unwrap()
+      .then(() => {
+        dispatch(clearConstructorItems());
+      });
   };
 
   const closeOrderModal = () => {
-    dispatch(clearConstructorItems());
     dispatch(closeOrder());
   };
 
-  const price = useMemo(
-    () =>
-      (constructorItems.bun ? constructorItems.bun.price * 2 : 0) +
-      constructorItems.ingredients.reduce(
-        (s: number, v: TConstructorIngredient) => s + v.price,
-        0
-      ),
-    [constructorItems]
-  );
+  const price = useMemo(() => {
+    const bunPrice = constructorItems.bun ? constructorItems.bun.price * 2 : 0;
+
+    const ingredientsPrice = constructorItems.ingredients.reduce(
+      (sum: number, item: TConstructorIngredient) => sum + item.price,
+      0
+    );
+
+    return bunPrice + ingredientsPrice;
+  }, [constructorItems]);
 
   return (
     <BurgerConstructorUI

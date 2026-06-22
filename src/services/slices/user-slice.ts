@@ -9,73 +9,88 @@ import {
   TRegisterData,
   updateUserApi
 } from '../../utils/burger-api';
+
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { TUser } from '../../utils/types';
 import { deleteCookie, getCookie, setCookie } from '../../utils/cookie';
 
-interface User {
+interface UserState {
   isAuthChecked: boolean;
   user: TUser | null;
   error: string | null;
+  isLoading: boolean;
 }
 
-export const initialState: User = {
+export const initialState: UserState = {
   isAuthChecked: false,
   user: null,
-  error: null
+  error: null,
+  isLoading: false
 };
 
 export const registerUser = createAsyncThunk(
   'user/registerUser',
-  (data: TRegisterData) => registerUserApi(data)
+  async (data: TRegisterData) => {
+    const response = await registerUserApi(data);
+
+    setCookie('accessToken', response.accessToken);
+    localStorage.setItem('refreshToken', response.refreshToken);
+
+    return response;
+  }
 );
 
 export const loginUser = createAsyncThunk(
   'user/loginUser',
   async (data: TLoginData) => {
     const response = await loginUserApi(data);
+
     setCookie('accessToken', response.accessToken);
     localStorage.setItem('refreshToken', response.refreshToken);
+
     return response;
   }
 );
 
 export const forgotPassword = createAsyncThunk(
   'user/forgotPassword',
-  async (data: { email: string }) => await forgotPasswordApi(data)
+  async (data: { email: string }) => forgotPasswordApi(data)
 );
 
 export const resetPassword = createAsyncThunk(
   'user/resetPassword',
-  async (data: { password: string; token: string }) =>
-    await resetPasswordApi(data)
+  async (data: { password: string; token: string }) => resetPasswordApi(data)
 );
 
 export const checkUser = createAsyncThunk(
   'user/checkUser',
-  async (_, { dispatch }) => {
-    if (getCookie('accessToken')) {
+  async (_, { rejectWithValue }) => {
+    if (!getCookie('accessToken')) {
+      return rejectWithValue('no token');
+    }
+
+    try {
       return await getUserApi();
-    } else {
-      dispatch(setIsAuthChecked(true));
-      return null;
+    } catch (error) {
+      deleteCookie('accessToken');
+      localStorage.removeItem('refreshToken');
+      return rejectWithValue(error);
     }
   }
 );
 
 export const updateUser = createAsyncThunk(
   'user/updateUser',
-  async function (data: TRegisterData) {
-    const response = await updateUserApi(data);
-    return response;
-  }
+  async (data: TRegisterData) => updateUserApi(data)
 );
 
 export const logout = createAsyncThunk('user/logout', async () => {
-  const response = await logoutApi();
+  await logoutApi();
+
   deleteCookie('accessToken');
   localStorage.removeItem('refreshToken');
-  return response;
+
+  return true;
 });
 
 export const userSlice = createSlice({
@@ -92,72 +107,83 @@ export const userSlice = createSlice({
       state.error = action.payload;
     }
   },
+
   extraReducers: (builder) => {
-    builder.addCase(registerUser.pending, (state) => {
-      state.isAuthChecked = true;
-      state.error = null;
-    });
-    builder.addCase(registerUser.rejected, (state, action) => {
-      state.error = action.error.message as string;
-      state.isAuthChecked = false;
-    });
-    builder.addCase(registerUser.fulfilled, (state, action) => {
-      state.isAuthChecked = true;
-      state.error = null;
-      state.user = action.payload.user;
-      setCookie('accessToken', action.payload.accessToken);
-    });
-    builder.addCase(loginUser.pending, (state) => {
-      state.isAuthChecked = true;
-      state.error = null;
-    });
-    builder.addCase(loginUser.rejected, (state, action) => {
-      state.isAuthChecked = false;
-      state.error = action.error.message as string;
-    });
-    builder.addCase(loginUser.fulfilled, (state, action) => {
-      state.isAuthChecked = true;
-      state.error = null;
-      state.user = action.payload.user;
-      setCookie('accessToken', action.payload.accessToken);
-    });
-    builder.addCase(logout.pending, (state) => {
-      state.error = null;
-    });
-    builder.addCase(logout.rejected, (state, action) => {
-      state.error = action.error.message as string;
-    });
-    builder.addCase(logout.fulfilled, (state) => {
-      state.error = null;
-      state.user = { email: '', name: '' };
-      deleteCookie('accessToken');
-      state.isAuthChecked = false;
-    });
-    builder.addCase(updateUser.pending, (state) => {
-      state.error = null;
-    });
-    builder.addCase(updateUser.fulfilled, (state, action) => {
-      state.user = action.payload.user;
-      state.isAuthChecked = true;
-    });
-    builder.addCase(updateUser.rejected, (state, action) => {
-      state.error = action.error.message as string;
-    });
-    builder.addCase(checkUser.pending, (state) => {
-      state.error = null;
-    });
-    builder.addCase(checkUser.fulfilled, (state, action) => {
-      state.error = null;
-      state.isAuthChecked = true;
-      state.user = action.payload?.user ?? null;
-    });
-    builder.addCase(checkUser.rejected, (state, action) => {
-      state.error = action.error.message as string;
-      state.isAuthChecked = true;
-      state.user = null;
-      deleteCookie('accessToken');
-      localStorage.removeItem('refreshToken');
-    });
+    builder
+
+      .addCase(registerUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthChecked = true;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? null;
+      })
+
+      .addCase(loginUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthChecked = true;
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? null;
+      })
+
+      .addCase(logout.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.error = null;
+        state.isAuthChecked = true;
+      })
+      .addCase(logout.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? null;
+      })
+
+      .addCase(updateUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.isAuthChecked = true;
+      })
+      .addCase(updateUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message ?? null;
+      })
+
+      .addCase(checkUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(checkUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload?.user ?? null;
+        state.isAuthChecked = true;
+      })
+      .addCase(checkUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.user = null;
+        state.isAuthChecked = true;
+        state.error =
+          (action.payload as string) ?? action.error.message ?? null;
+      });
   }
 });
 
