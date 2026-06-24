@@ -10,7 +10,6 @@ const getOrders = (orders: TOrder[], status: string): number[] =>
     .slice(0, 20);
 
 export const FeedInfo: FC = () => {
-  // Берем заказы из feed, а не из orders
   const { feed } = useSelector((state) => state.orders);
   const orders = feed?.orders || [];
 

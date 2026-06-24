@@ -22,7 +22,6 @@ export const Login: FC = () => {
     dispatch(loginUser({ email, password }))
       .unwrap()
       .then(() => {
-        // возвращаем на защищённый маршрут или fallback
         navigate(from, { replace: true });
       });
   };

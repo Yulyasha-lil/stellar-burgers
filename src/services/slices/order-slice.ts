@@ -92,8 +92,6 @@ const orderSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-      // Feed
-
       .addCase(fetchFeeds.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -106,8 +104,6 @@ const orderSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message ?? null;
       })
-
-      // User orders
 
       .addCase(fetchOrders.pending, (state) => {
         state.isLoading = true;
@@ -122,8 +118,6 @@ const orderSlice = createSlice({
         state.error = action.error.message ?? null;
       })
 
-      // Order details
-
       .addCase(fetchOrderByNumber.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -137,8 +131,6 @@ const orderSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message ?? null;
       })
-
-      // Create order
 
       .addCase(createOrder.pending, (state) => {
         state.orderRequest = true;
