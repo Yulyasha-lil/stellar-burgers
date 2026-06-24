@@ -13,6 +13,16 @@ module.exports = {
         use: ['babel-loader']
       },
       {
+        test: /\.(js|jsx)$/,
+        include: /@zlden\/react-developer-burger-ui-components/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env', '@babel/preset-react']
+          }
+        }
+      },
+      {
         test: /\.(ts)x?$/,
         exclude: /node_modules/,
         use: {
