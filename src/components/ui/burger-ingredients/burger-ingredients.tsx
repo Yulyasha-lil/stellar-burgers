@@ -20,12 +20,16 @@ export const BurgerIngredientsUI: FC<BurgerIngredientsUIProps> = memo(
     onTabClick
   }) => (
     <>
-      <section className={styles.burger_ingredients}>
+      <section
+        className={styles.burger_ingredients}
+        data-testid='ingredients-list'
+      >
         <nav>
           <ul className={styles.menu}>
             <Tab value='bun' active={currentTab === 'bun'} onClick={onTabClick}>
               Булки
             </Tab>
+
             <Tab
               value='main'
               active={currentTab === 'main'}
@@ -33,6 +37,7 @@ export const BurgerIngredientsUI: FC<BurgerIngredientsUIProps> = memo(
             >
               Начинки
             </Tab>
+
             <Tab
               value='sauce'
               active={currentTab === 'sauce'}
@@ -42,6 +47,7 @@ export const BurgerIngredientsUI: FC<BurgerIngredientsUIProps> = memo(
             </Tab>
           </ul>
         </nav>
+
         <div className={styles.content}>
           <IngredientsCategory
             title='Булки'
@@ -49,12 +55,14 @@ export const BurgerIngredientsUI: FC<BurgerIngredientsUIProps> = memo(
             ingredients={buns}
             ref={bunsRef}
           />
+
           <IngredientsCategory
             title='Начинки'
             titleRef={titleMainRef}
             ingredients={mains}
             ref={mainsRef}
           />
+
           <IngredientsCategory
             title='Соусы'
             titleRef={titleSaucesRef}
