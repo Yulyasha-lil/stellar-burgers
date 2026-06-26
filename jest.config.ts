@@ -6,7 +6,16 @@ const config: JestConfigWithTsJest = {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageProvider: 'v8',
-  testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
+  testMatch: [
+    '**/__tests__/**/*.[jt]s?(x)',
+    '**/src/**/*.test.[jt]s?(x)',
+    '**/src/**/*.spec.[jt]s?(x)'
+  ],
+
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/tests/'
+  ],
 
   transformIgnorePatterns: ['\\\\node_modules\\\\', '\\.pnp\\.[^\\\\]+$'],
 
